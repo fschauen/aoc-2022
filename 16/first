@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Valve:
+    name: str
+    rate: int
+    others: tuple  # of names of other valves
+
+
+def parse(f):
+    def parse_line(line):
+        # Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
+        # 0     1  2   3    4       5       6    7  8      9...
+        pieces = line.split()
+        name = pieces[1]
+        rate = int(pieces[4].split('=')[1].strip(';'))
+        others = tuple(p.strip(', ') for p in pieces[9:])
+        return name, Valve(name, rate, others)
+
+    non_empty_lines = filter(len, map(str.rstrip, f))
+    return dict(parse_line(line) for line in non_empty_lines)
+
+
+# def solve(valves, time=30):
+#     def inner(remaining, opened, released, curent):
+#         print(remaining, opened)
+#         if remaining:
+#             actions = [opened]
+#             if current.rate > 0 and current not in opened:
+#                 actions.append(opened + {current})
+
+#             r = sum(v.rate for v in opened)
+
+#             branches = [
+#                 inner(remaining - 1, o, released + r, valve)
+#                 for o in actions
+#                 for valve in current.others]
+
+#         else:
+#             return opened
+
+#     inner(time, {}, 0, valves['AA'])
+
+
+def solve(valves, /, time=30):
+    current = valves['DD']
+    releasing = set()
+    total_released = 0
+
+    for t in range(1, time+1):
+        released = sum(v.rate for v in releasing)
+        total_released += released
+
+        if current.rate > 0 and current not in releasing:
+            releasing.add(current)
+            action = f'open {current.name}'
+        else:
+            next = valves[current.others[-1]]
+            current = next
+            action = f'goto {next.name}'
+
+        temp = sorted(v.name for v in releasing)
+        print(f'{t:>2}: {action}, {released:>4} released, {total_released:>4} total, open: {temp}')
+
+
+def part1(filepath):
+    with open(filepath) as f:
+        valves = parse(f)
+        solve(valves, time=10)
+
+        # for i, valve in enumerate(parse(f), start=1):
+        #     print(f'{i:>2}: {valve}')
+
+
+if __name__ == '__main__':
+    import sys
+    for filepath in sys.argv[1:]:
+        print(f'Input file: {filepath}')
+        print(f'  Part 1: {part1(filepath)}')
+        # print(f'  Part 2: {part2(filepath)}')
+        print()
+

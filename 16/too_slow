@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Valve:
+    name: str
+    rate: int
+    others: tuple  # of names of other valves
+
+
+def parse(f):
+    def parse_line(line):
+        # Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
+        # 0     1  2   3    4       5       6    7  8      9...
+        pieces = line.split()
+        name = pieces[1]
+        rate = int(pieces[4].split('=')[1].strip(';'))
+        others = tuple(p.strip(', ') for p in pieces[9:])
+        return name, Valve(name, rate, others)
+
+    non_empty_lines = filter(len, map(str.rstrip, f))
+    return dict(parse_line(line) for line in non_empty_lines)
+
+
+# def solve(valves, time=30):
+#     def inner(remaining, opened, released, curent):
+#         print(remaining, opened)
+#         if remaining:
+#             actions = [opened]
+#             if current.rate > 0 and current not in opened:
+#                 actions.append(opened + {current})
+
+#             r = sum(v.rate for v in opened)
+
+#             branches = [
+#                 inner(remaining - 1, o, released + r, valve)
+#                 for o in actions
+#                 for valve in current.others]
+
+#         else:
+#             return opened
+
+#     inner(time, {}, 0, valves['AA'])
+
+
+def solve(valves, /, time=30):
+    def inner(t, acc, releasing, current, level=0):
+        new = sum(v.rate for v in releasing)
+
+        # prefix = '  ' * level
+        # temp = sorted(v.name for v in releasing)
+
+        if t > time:
+            # print(f'{prefix}{t}: time out, {released} released from {temp}')
+            return acc
+
+        branches = []
+
+        if current not in releasing:
+            # print(f'{prefix}{t}: open {current.name}, {released} released from {temp}')
+            branches.append(inner(t+1, acc+new, releasing | set([current]), current, level+1))
+
+        for name in current.others:
+            next = valves[name]
+            # print(f'{prefix}{t}: goto {next.name}, {released} released from {temp}')
+            branches.append(inner(t+1, acc+new, releasing, next, level+1))
+
+        return max(branches)
+
+    return inner(1, 0, releasing=set(), current=valves['AA'])
+
+
+def part1(filepath):
+    with open(filepath) as f:
+        valves = parse(f)
+        result = solve(valves, time=30)
+        print(result)
+
+        # for i, valve in enumerate(parse(f), start=1):
+        #     print(f'{i:>2}: {valve}')
+
+
+if __name__ == '__main__':
+    import sys
+    for filepath in sys.argv[1:]:
+        print(f'Input file: {filepath}')
+        print(f'  Part 1: {part1(filepath)}')
+        # print(f'  Part 2: {part2(filepath)}')
+        print()
+
